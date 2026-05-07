@@ -12,6 +12,10 @@ inputs:
   tracking_comment_id:
     description: "ID of the tracking comment to update"
     required: true
+  mention_trigger_user:
+    description: "Mention the triggering user in Droid completion status comments. Set to 'false' to avoid notification-generating @username headers."
+    required: false
+    default: "true"
   review_depth:
     description: "Review depth preset: 'shallow' (fast, uses kimi-k2-0711) or 'deep' (thorough, uses gpt-5.2 with high reasoning). Defaults to deep. Setting review_model or reasoning_effort explicitly overrides the preset values."
     required: false
@@ -156,5 +160,6 @@ runs:
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         OUTPUT_FILE: ${{ inputs.output_file }}
         TRIGGER_USERNAME: ${{ github.event.pull_request.user.login || github.event.sender.login || github.triggering_actor || github.actor || '' }}
+        MENTION_TRIGGER_USER: ${{ inputs.mention_trigger_user }}
         PREPARE_SUCCESS: "true"
         DROID_SUCCESS: ${{ steps.validator.outcome == 'success' }}

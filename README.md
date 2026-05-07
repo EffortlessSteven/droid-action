@@ -225,6 +225,14 @@ jobs:
 
 Raw Droid runtime state is not uploaded. In `redacted` mode, the action builds a new allowlisted bundle under the runner temp directory and applies best-effort redaction before upload.
 
+### Status Comments
+
+| Input                  | Default | Purpose                                                                                                                    |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `mention_trigger_user` | `true`  | Mention the triggering user in generated Droid completion status comments. Set to `false` for a neutral completion header. |
+
+This setting only controls the wrapper-generated completion header. It does not remove mentions from Droid-generated review content or from explicitly configured notifications such as `security_notify_team`.
+
 ### Review Configuration
 
 | Input              | Default | Purpose                                                                                              |

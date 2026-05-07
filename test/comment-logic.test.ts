@@ -1,4 +1,6 @@
 import { describe, it, expect } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   updateCommentBody,
   type CommentUpdateInput,
@@ -28,6 +30,45 @@ describe("updateCommentBody", () => {
         "**Droid finished @trigger-user's task in 1m 14s**",
       );
       expect(result).not.toContain("Droid is working");
+    });
+
+    it("explicit true mentions the trigger user", () => {
+      const input = {
+        ...baseInput,
+        currentBody: "Droid is working...",
+        triggerUsername: "trigger-user",
+        mentionTriggerUser: true,
+      };
+
+      const result = updateCommentBody(input);
+      expect(result).toContain("**Droid finished @trigger-user's task**");
+    });
+
+    it("false uses a neutral success header", () => {
+      const input = {
+        ...baseInput,
+        currentBody: "Droid is working...",
+        triggerUsername: "trigger-user",
+        mentionTriggerUser: false,
+      };
+
+      const result = updateCommentBody(input);
+      expect(result).toContain("**Droid finished the task**");
+      expect(result).not.toContain("@trigger-user");
+    });
+
+    it("false uses a neutral success header with duration", () => {
+      const input = {
+        ...baseInput,
+        currentBody: "Droid is working...",
+        executionDetails: { duration_ms: 74000 },
+        triggerUsername: "trigger-user",
+        mentionTriggerUser: false,
+      };
+
+      const result = updateCommentBody(input);
+      expect(result).toContain("**Droid finished the task in 1m 14s**");
+      expect(result).not.toContain("@trigger-user");
     });
 
     it("includes error message header with duration", () => {
@@ -70,6 +111,45 @@ describe("updateCommentBody", () => {
 
       const result = updateCommentBody(input);
       expect(result).toContain("**Droid finished @testuser's task**");
+    });
+
+    it("false does not extract a username from body content into the header", () => {
+      const input = {
+        ...baseInput,
+        currentBody: "Droid is working…\n\nI'll work on this task @body-user",
+        mentionTriggerUser: false,
+      };
+
+      const result = updateCommentBody(input);
+      expect(result).toContain("**Droid finished the task**");
+      expect(result).not.toContain("Droid finished @body-user");
+    });
+
+    it("false preserves mentions already present in body content", () => {
+      const input = {
+        ...baseInput,
+        currentBody: "Droid is working…\n\nI left a note for @body-user.",
+        mentionTriggerUser: false,
+      };
+
+      const result = updateCommentBody(input);
+      expect(result).toContain("**Droid finished the task**");
+      expect(result).toContain("I left a note for @body-user.");
+    });
+
+    it("false does not change failure headers", () => {
+      const input = {
+        ...baseInput,
+        currentBody: "Droid is working...",
+        actionFailed: true,
+        executionDetails: { duration_ms: 45000 },
+        triggerUsername: "trigger-user",
+        mentionTriggerUser: false,
+      };
+
+      const result = updateCommentBody(input);
+      expect(result).toContain("**Droid encountered an error after 45s**");
+      expect(result).not.toContain("Droid finished the task");
     });
   });
 
@@ -498,5 +578,44 @@ describe("updateCommentBody", () => {
       const occurrences = result.split(SHIELD_URL_FRAGMENT).length - 1;
       expect(occurrences).toBe(1);
     });
+
+    it("keeps security badge behavior in neutral header mode", () => {
+      const input: CommentUpdateInput = {
+        ...baseInput,
+        currentBody: "Droid is reviewing code and running a security check…",
+        executionDetails: { duration_ms: 60000 },
+        securityReviewRan: true,
+        mentionTriggerUser: false,
+      };
+
+      const result = updateCommentBody(input);
+      expect(result).toContain("**Droid finished the task in 1m 0s**");
+      expect(result).toContain(SHIELD_URL_FRAGMENT);
+    });
   });
+});
+
+describe("action metadata mention_trigger_user input", () => {
+  const actionFiles: Array<[string, string]> = [
+    ["top-level action", "action.yml"],
+    ["review action", join("review", "action.yml")],
+    ["security action", join("security", "action.yml")],
+  ];
+
+  for (const [label, relativePath] of actionFiles) {
+    it(`${label} exposes mention_trigger_user`, () => {
+      const actionYml = readFileSync(
+        join(import.meta.dir, "..", relativePath),
+        "utf8",
+      );
+
+      expect(actionYml).toContain("mention_trigger_user:");
+      expect(actionYml).toMatch(
+        /mention_trigger_user:\s*\n(?:\s+.*\n)*?\s+default:\s+"true"/,
+      );
+      expect(actionYml).toContain(
+        "MENTION_TRIGGER_USER: ${{ inputs.mention_trigger_user }}",
+      );
+    });
+  }
 });

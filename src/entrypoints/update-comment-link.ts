@@ -21,6 +21,9 @@ async function run() {
     const commentId = parseInt(process.env.DROID_COMMENT_ID!);
     const githubToken = process.env.GITHUB_TOKEN!;
     const triggerUsername = process.env.TRIGGER_USERNAME;
+    const mentionTriggerUser =
+      (process.env.MENTION_TRIGGER_USER ?? "true").trim().toLowerCase() !==
+      "false";
 
     const context = parseGitHubContext();
 
@@ -158,6 +161,7 @@ async function run() {
       prLink,
       branchName: undefined,
       triggerUsername,
+      mentionTriggerUser,
       errorDetails,
       securityReviewRan: process.env.AUTOMATIC_SECURITY_REVIEW === "true",
     };

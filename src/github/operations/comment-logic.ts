@@ -17,6 +17,7 @@ export type CommentUpdateInput = {
   triggerUsername?: string;
   errorDetails?: string;
   securityReviewRan?: boolean;
+  mentionTriggerUser?: boolean;
 };
 
 export const SECURITY_REVIEW_BADGE =
@@ -82,6 +83,7 @@ export function updateCommentBody(input: CommentUpdateInput): string {
     triggerUsername,
     errorDetails,
     securityReviewRan,
+    mentionTriggerUser = true,
   } = input;
 
   // Extract content from the original comment body
@@ -137,12 +139,16 @@ export function updateCommentBody(input: CommentUpdateInput): string {
     }
     header += "**";
   } else {
-    // Get the username from triggerUsername or extract from content
-    const usernameMatch = bodyContent.match(/@([a-zA-Z0-9-]+)/);
-    const username =
-      triggerUsername || (usernameMatch ? usernameMatch[1] : "user");
+    if (mentionTriggerUser) {
+      // Get the username from triggerUsername or extract from content
+      const username =
+        triggerUsername || bodyContent.match(/@([a-zA-Z0-9-]+)/)?.[1] || "user";
 
-    header = `**Droid finished @${username}'s task`;
+      header = `**Droid finished @${username}'s task`;
+    } else {
+      header = "**Droid finished the task";
+    }
+
     if (durationStr) {
       header += ` in ${durationStr}`;
     }
