@@ -51,6 +51,10 @@ inputs:
     description: "Use just one comment to deliver issue/PR comments"
     required: false
     default: "false"
+  mention_trigger_user:
+    description: "Mention the triggering user in Droid completion status comments. Set to 'false' to avoid notification-generating @username headers."
+    required: false
+    default: "true"
   track_progress:
     description: "Force tag mode with tracking comments for pull_request and issue events. Only applicable to pull_request (opened, synchronize, ready_for_review, reopened) and issue (opened, edited, labeled, assigned) events."
     required: false
@@ -350,6 +354,7 @@ runs:
         PREPARE_SUCCESS: ${{ steps.prepare.outcome == 'success' }}
         PREPARE_ERROR: ${{ steps.prepare.outputs.prepare_error || '' }}
         USE_STICKY_COMMENT: ${{ inputs.use_sticky_comment }}
+        MENTION_TRIGGER_USER: ${{ inputs.mention_trigger_user }}
         TRACK_PROGRESS: ${{ inputs.track_progress }}
         AUTOMATIC_REVIEW: ${{ inputs.automatic_review }}
         AUTOMATIC_SECURITY_REVIEW: ${{ inputs.automatic_security_review }}

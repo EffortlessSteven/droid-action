@@ -216,6 +216,14 @@ jobs:
 | `factory_api_key` | **Required.** Grants Droid Exec permission to run via Factory.                                         |
 | `github_token`    | Optional override if you prefer a custom GitHub App/token. By default the installed app token is used. |
 
+### Status Comments
+
+| Input                  | Default | Purpose                                                                                                                    |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `mention_trigger_user` | `true`  | Mention the triggering user in generated Droid completion status comments. Set to `false` for a neutral completion header. |
+
+This setting only controls the wrapper-generated completion header. It does not remove mentions from Droid-generated review content or from explicitly configured notifications such as `security_notify_team`.
+
 ### Review Configuration
 
 | Input              | Default | Purpose                                                                                              |

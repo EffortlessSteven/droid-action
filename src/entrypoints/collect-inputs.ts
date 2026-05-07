@@ -23,6 +23,7 @@ export function collectActionInputsPresence(): void {
     droid_args: "",
     max_turns: "",
     use_sticky_comment: "false",
+    mention_trigger_user: "true",
     experimental_allowed_domains: "",
     track_progress: "false",
     automatic_review: "false",
