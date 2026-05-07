@@ -1,0 +1,14 @@
+manifest.json
+prompts/droid-prompt.txt.redacted
+prompts/pr.diff.redacted
+prompts/existing_comments.json.redacted
+prompts/pr_description.txt.redacted
+prompts/review_candidates.json.redacted
+prompts/review_validated.json.redacted
+factory/settings.json.redacted
+factory/settings.local.json.redacted
+factory/droid/settings.json.redacted
+factory/mcp.json.redacted
+factory/logs/run.log.redacted
+factory/sessions/session.jsonl.redacted
+
