@@ -89,6 +89,77 @@ describe("setupDroidSettings", () => {
     expect(settings.permissions).toEqual(testSettings.permissions);
   });
 
+  test("should treat a settings file path beginning with a digit as a file path", async () => {
+    const numericSettingsPath = join(testSettingsDir, "2026-settings.json");
+    await writeFile(
+      numericSettingsPath,
+      JSON.stringify({ model: "test-model" }),
+    );
+
+    const previousCwd = process.cwd();
+    try {
+      process.chdir(testSettingsDir);
+      await setupDroidSettings("2026-settings.json", testHomeDir);
+    } finally {
+      process.chdir(previousCwd);
+    }
+
+    const settingsContent = await readFile(settingsPath, "utf-8");
+    const settings = JSON.parse(settingsContent);
+
+    expect(settings.enableAllProjectMcpServers).toBe(true);
+    expect(settings.model).toBe("test-model");
+  });
+
+  test("should keep custom models from JSON input in Droid settings", async () => {
+    const inputSettings = JSON.stringify({
+      customModels: [
+        {
+          name: "custom-model-test",
+          apiKey: "${CUSTOM_MODEL_API_KEY}",
+        },
+      ],
+      model: "test-model",
+    });
+
+    await setupDroidSettings(inputSettings, testHomeDir);
+
+    const settings = JSON.parse(await readFile(settingsPath, "utf-8"));
+
+    expect(settings.enableAllProjectMcpServers).toBe(true);
+    expect(settings.model).toBe("test-model");
+    expect(settings.customModels).toEqual([
+      {
+        name: "custom-model-test",
+        apiKey: "${CUSTOM_MODEL_API_KEY}",
+      },
+    ]);
+  });
+
+  test("should keep custom models from file path input in Droid settings", async () => {
+    const testSettings = {
+      customModels: [
+        {
+          name: "file-model",
+          apiKey: "${CUSTOM_MODEL_API_KEY}",
+        },
+      ],
+      permissions: {
+        allow: ["Bash", "Read"],
+      },
+    };
+
+    await writeFile(testSettingsPath, JSON.stringify(testSettings, null, 2));
+
+    await setupDroidSettings(testSettingsPath, testHomeDir);
+
+    const settings = JSON.parse(await readFile(settingsPath, "utf-8"));
+
+    expect(settings.enableAllProjectMcpServers).toBe(true);
+    expect(settings.permissions).toEqual(testSettings.permissions);
+    expect(settings.customModels).toEqual(testSettings.customModels);
+  });
+
   test("should override enableAllProjectMcpServers even if false in input", async () => {
     const inputSettings = JSON.stringify({
       enableAllProjectMcpServers: false,
@@ -105,13 +176,50 @@ describe("setupDroidSettings", () => {
   });
 
   test("should throw error for invalid JSON string", async () => {
-    expect(() => setupDroidSettings("{ invalid json", testHomeDir)).toThrow();
+    await expect(
+      setupDroidSettings("{ invalid json", testHomeDir),
+    ).rejects.toThrow("Failed to parse settings input as JSON");
   });
 
+  for (const [label, payload] of [
+    ["null", "null"],
+    ["array", "[]"],
+    ["string", JSON.stringify("hello")],
+    ["number", "42"],
+  ] as const) {
+    test(`should reject ${label} settings input`, async () => {
+      await expect(setupDroidSettings(payload, testHomeDir)).rejects.toThrow(
+        "settings input must be a JSON object",
+      );
+    });
+
+    test(`should reject ${label} settings file input`, async () => {
+      await writeFile(testSettingsPath, payload);
+
+      await expect(
+        setupDroidSettings(testSettingsPath, testHomeDir),
+      ).rejects.toThrow("must be a JSON object");
+    });
+  }
+
   test("should throw error for non-existent file path", async () => {
-    expect(() =>
+    await expect(
       setupDroidSettings("/non/existent/file.json", testHomeDir),
-    ).toThrow();
+    ).rejects.toThrow("Failed to read or parse settings file");
+  });
+
+  test("should fail clearly and preserve corrupt existing Droid settings", async () => {
+    const corruptSettings = "{ invalid existing droid settings";
+    await mkdir(join(testHomeDir, ".factory", "droid"), { recursive: true });
+    await writeFile(settingsPath, corruptSettings);
+
+    await expect(
+      setupDroidSettings(JSON.stringify({ model: "test-model" }), testHomeDir),
+    ).rejects.toThrow("must contain valid JSON");
+
+    await expect(readFile(settingsPath, "utf-8")).resolves.toBe(
+      corruptSettings,
+    );
   });
 
   test("should handle empty string input", async () => {
