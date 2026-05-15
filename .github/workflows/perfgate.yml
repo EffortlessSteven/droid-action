@@ -21,5 +21,6 @@ jobs:
         with:
           config: perfgate.toml
           all: "true"
+          fail_on_warn: "true"
           require_baseline: "true"
           upload_artifact: "true"
