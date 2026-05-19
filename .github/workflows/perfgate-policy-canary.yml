@@ -1,0 +1,47 @@
+name: perfgate policy canary
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  perfgate-policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run perfgate policy posture canary
+        uses: EffortlessMetrics/perfgate@main
+        with:
+          config: perfgate.toml
+          all: "false"
+          bench: droid-node-version
+          fail_on_warn: "false"
+          require_baseline: "false"
+          upload_artifact: "true"
+
+      - name: Print collected step summaries
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          summary_dir="${RUNNER_TEMP}/_runner_file_commands"
+          echo "Collected step summaries from ${summary_dir}:"
+          if [[ ! -d "${summary_dir}" ]]; then
+            echo "summary directory missing"
+            exit 0
+          fi
+
+          found=false
+          while IFS= read -r summary; do
+            found=true
+            echo "----- ${summary} -----"
+            cat "${summary}"
+          done < <(find "${summary_dir}" -maxdepth 1 -type f -name 'step_summary_*' | sort)
+
+          if [[ "${found}" != "true" ]]; then
+            echo "no step summary files found"
+          fi

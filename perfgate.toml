@@ -1,0 +1,13 @@
+[defaults]
+repeat = 3
+warmup = 0
+threshold = 0.20
+warn_factor = 0.50
+noise_threshold = 0.10
+noise_policy = "warn"
+out_dir = "artifacts/perfgate"
+baseline_dir = "baselines"
+
+[[bench]]
+name = "droid-node-version"
+command = ["node", "-e", "console.log(process.version)"]
