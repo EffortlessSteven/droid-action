@@ -1,0 +1,105 @@
+name: Fake Droid Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  debug-artifacts-none:
+    name: debug_artifacts none/default
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Run local action without debug artifacts
+        uses: ./
+        with:
+          factory_api_key: fake-factory-api-key
+          github_token: ${{ github.token }}
+          path_to_droid_executable: ${{ github.workspace }}/test/fixtures/fake-droid
+          debug_artifacts: none
+          mention_trigger_user: false
+
+      - name: Assert no Droid debug artifacts exist
+        run: bun run scripts/assert-smoke-artifacts.ts no-debug "$RUNNER_TEMP"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  debug-artifacts-redacted:
+    name: debug_artifacts redacted
+    runs-on: ubuntu-latest
+    needs: debug-artifacts-none
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version: 1.2.11
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run fake Droid
+        run: ./test/fixtures/fake-droid exec --output-format stream-json --skip-permissions-unsafe -f "$RUNNER_TEMP/droid-prompts/droid-prompt.txt"
+        env:
+          HOME: ${{ runner.temp }}/fake-home
+          DROID_OUTPUT_FILE: ${{ runner.temp }}/fake-droid-output.json
+
+      - name: Prepare redacted debug artifacts
+        run: bun run src/entrypoints/prepare-debug-artifacts.ts
+        env:
+          DEBUG_ARTIFACTS_MODE: redacted
+          DEBUG_ARTIFACTS_DIR: ${{ runner.temp }}/droid-debug-artifacts
+          FACTORY_HOME: ${{ runner.temp }}/fake-home/.factory
+          DROID_PROMPTS_DIR: ${{ runner.temp }}/droid-prompts
+
+      - name: Assert local redacted bundle
+        run: bun run scripts/assert-smoke-artifacts.ts redacted "$RUNNER_TEMP/droid-debug-artifacts"
+
+      - name: Upload redacted debug artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: droid-debug-${{ github.run_id }}
+          path: ${{ runner.temp }}/droid-debug-artifacts/**
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Download and assert uploaded redacted bundle
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "droid-debug-$GITHUB_RUN_ID" --dir "$RUNNER_TEMP/downloaded-debug"; then
+              break
+            fi
+            if [ "$attempt" = "6" ]; then
+              exit 1
+            fi
+            sleep 5
+          done
+          bun run scripts/assert-smoke-artifacts.ts redacted "$RUNNER_TEMP/downloaded-debug"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  neutral-completion-header:
+    name: mention_trigger_user false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version: 1.2.11
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Assert neutral completion status header
+        run: bun run scripts/assert-smoke-artifacts.ts neutral-header

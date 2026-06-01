@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+factory_home="${HOME}/.factory"
+prompts_dir="${RUNNER_TEMP:-/tmp}/droid-prompts"
+github_actions_prefix="ghs"
+github_actions_token="${github_actions_prefix}_${DROID_FAKE_GITHUB_SUFFIX:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
+git_hub_token_prefix="$(printf "%s_%s" "github" "pat")"
+git_hub_token_value="${git_hub_token_prefix}_test_fake_token"
+bearer_token="test-bearer-token"
+bearer_header="Bearer ${bearer_token}"
+
+mkdir -p "${factory_home}/droid" \
+  "${factory_home}/logs" \
+  "${factory_home}/sessions" \
+  "${prompts_dir}"
+
+cat > "${factory_home}/settings.json" <<'JSON'
+{
+  "customModels": [
+    {
+      "name": "fake-custom-model",
+      "apiKey": "custom-model-secret-test-value"
+    }
+  ]
+}
+JSON
+
+cat > "${factory_home}/settings.local.json" <<'JSON'
+{
+  "customModels": [
+    {
+      "name": "fake-custom-model-literal",
+      "apiKey": "${CUSTOM_MODEL_API_KEY}"
+    }
+  ]
+}
+JSON
+
+cat > "${factory_home}/droid/settings.json" <<'JSON'
+{
+  "enableAllProjectMcpServers": true,
+  "model": "fake-model"
+}
+JSON
+
+cat > "${factory_home}/mcp.json" <<JSON
+{
+  "mcpServers": {
+    "github": {
+      "env": {
+        "GITHUB_TOKEN": "${github_actions_token}"
+      }
+    }
+  }
+}
+JSON
+
+cat > "${factory_home}/logs/run.log" <<LOG
+Authorization: ${bearer_header}
+--env TOKEN=${git_hub_token_value}
+LOG
+
+cat > "${factory_home}/sessions/session.jsonl" <<JSONL
+{"type":"session","accessToken":"${git_hub_token_value}","authorization":"${bearer_header}"}
+JSONL
+
+cat > "${prompts_dir}/droid-prompt.txt" <<TXT
+Use fake key custom-model-secret-test-value and Authorization: ${bearer_header}.
+TXT
+
+cat > "${prompts_dir}/pr.diff" <<TXT
++ token = "${git_hub_token_value}"
+TXT
+
+cat > "${prompts_dir}/existing_comments.json" <<JSON
+[
+  {
+    "body": "GITHUB_TOKEN=${github_actions_token}"
+  }
+]
+JSON
+
+cat > "${prompts_dir}/pr_description.txt" <<'TXT'
+Fake description with apiKey: custom-model-secret-test-value
+TXT
+
+cat > "${prompts_dir}/review_candidates.json" <<JSON
+{
+  "token": "${git_hub_token_value}"
+}
+JSON
+
+cat > "${prompts_dir}/review_validated.json" <<JSON
+{
+  "authorization": "${bearer_header}"
+}
+JSON
+
+if [[ -n "${DROID_OUTPUT_FILE:-}" ]]; then
+  cat > "${DROID_OUTPUT_FILE}" <<'JSON'
+[
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "duration_ms": 74000,
+    "duration_api_ms": 74000
+  }
+]
+JSON
+fi
+
+printf '{"type":"result","subtype":"success","is_error":false,"duration_ms":74000,"duration_api_ms":74000}\n'
