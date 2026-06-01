@@ -330,6 +330,13 @@ runs:
         REVIEW_MODEL: ${{ inputs.review_model }}
         REASONING_EFFORT: ${{ inputs.reasoning_effort }}
         INCLUDE_SUGGESTIONS: ${{ inputs.include_suggestions }}
+        # review-validator.ts already merges DROID_ARGS into the validator's
+        # droid invocation, but this step wasn't forwarding it (only the
+        # candidate "Prepare action" step did). Without this, user
+        # --append-system-prompt-file (e.g. the no-approval / audit-trail review
+        # posture) reaches candidate generation but NOT the validator that writes
+        # the final summary. Forward it so the posture shapes both passes.
+        DROID_ARGS: ${{ inputs.droid_args }}
 
     - name: Run Droid Exec (validator)
       id: droid_validator
