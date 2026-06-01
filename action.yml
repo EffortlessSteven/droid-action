@@ -380,10 +380,9 @@ runs:
         TRACK_PROGRESS: ${{ inputs.track_progress }}
         AUTOMATIC_REVIEW: ${{ inputs.automatic_review }}
         AUTOMATIC_SECURITY_REVIEW: ${{ inputs.automatic_security_review }}
-        # Mechanical review digest in the completion comment (which model ran +
-        # what it flagged, read from the validated findings).
+        # Model attribution in the completion comment (which model produced this
+        # review).
         REVIEW_MODEL: ${{ inputs.review_model }}
-        REVIEW_VALIDATED_PATH: ${{ inputs.review_validated_path }}
 
     - name: Prepare redacted debug artifacts
       if: always() && steps.prepare.outputs.contains_trigger == 'true' && inputs.debug_artifacts == 'redacted'

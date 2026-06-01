@@ -620,7 +620,7 @@ describe("action metadata mention_trigger_user input", () => {
   }
 });
 
-describe("review digest (model + what it flagged)", () => {
+describe("review model attribution", () => {
   const baseInput: CommentUpdateInput = {
     currentBody: "Droid is working…",
     actionFailed: false,
@@ -628,50 +628,27 @@ describe("review digest (model + what it flagged)", () => {
     jobUrl: "https://github.com/owner/repo/actions/runs/123",
   };
 
-  it("renders model and a mechanical findings list", () => {
+  it("renders the model, stripping `custom:` prefix and catalog index", () => {
     const result = updateCommentBody({
       ...baseInput,
       reviewModel: "custom:GLM-5.1-ZAI-Coding-0",
-      reviewComments: [
-        { path: "src/a.rs", line: 42, title: "[P2] stale length after resize" },
-        { path: "test/a.test.ts", line: 10, title: "[P3] missing assertion" },
-      ],
-      reviewSummary: "Two issues found.",
     });
 
-    // model is shown, custom: prefix and catalog index stripped
     expect(result).toContain("**Model:** `GLM-5.1-ZAI-Coding`");
-    expect(result).toContain("**Flagged (2):**");
-    expect(result).toContain("- `src/a.rs:42` — [P2] stale length after resize");
-    expect(result).toContain("- `test/a.test.ts:10` — [P3] missing assertion");
-    expect(result).toContain("> Two issues found.");
   });
 
-  it("says no actionable findings when the model ran but flagged nothing", () => {
+  it("renders a different model unchanged otherwise", () => {
     const result = updateCommentBody({
       ...baseInput,
       reviewModel: "custom:MiniMax-M3-3",
-      reviewComments: [],
     });
 
     expect(result).toContain("**Model:** `MiniMax-M3`");
-    expect(result).toContain("_No actionable findings._");
   });
 
-  it("omits the digest entirely when no review data is present", () => {
+  it("omits the model line entirely when no model is provided", () => {
     const result = updateCommentBody(baseInput);
 
     expect(result).not.toContain("**Model:**");
-    expect(result).not.toContain("**Flagged");
-  });
-
-  it("handles a finding with no line number", () => {
-    const result = updateCommentBody({
-      ...baseInput,
-      reviewModel: "custom:GLM-5.1-ZAI-Coding-0",
-      reviewComments: [{ path: "src/a.rs", line: null, title: "[P1] file-level" }],
-    });
-
-    expect(result).toContain("- `src/a.rs` — [P1] file-level");
   });
 });
