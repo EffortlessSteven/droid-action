@@ -651,4 +651,36 @@ describe("review model attribution", () => {
 
     expect(result).not.toContain("**Model:**");
   });
+
+  it("renders a Lane line when a label is provided", () => {
+    const result = updateCommentBody({
+      ...baseInput,
+      reviewLabel: "ub · GLM-5.1",
+    });
+
+    expect(result).toContain("**Lane:** `ub · GLM-5.1`");
+  });
+
+  it("renders both Lane and Model by default when both are provided", () => {
+    const result = updateCommentBody({
+      ...baseInput,
+      reviewLabel: "ub · GLM-5.1",
+      reviewModel: "custom:GLM-5.1-ZAI-Coding-0",
+    });
+
+    expect(result).toContain("**Lane:** `ub · GLM-5.1`");
+    expect(result).toContain("**Model:** `GLM-5.1-ZAI-Coding`");
+  });
+
+  it("suppresses the Model line when showModel is false (lane only)", () => {
+    const result = updateCommentBody({
+      ...baseInput,
+      reviewLabel: "ub · GLM-5.1",
+      reviewModel: "custom:GLM-5.1-ZAI-Coding-0",
+      showModel: false,
+    });
+
+    expect(result).toContain("**Lane:** `ub · GLM-5.1`");
+    expect(result).not.toContain("**Model:**");
+  });
 });

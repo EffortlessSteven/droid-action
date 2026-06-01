@@ -103,6 +103,14 @@ inputs:
     description: "Override the model used for code review (e.g., 'claude-sonnet-4-5-20250929', 'gpt-5.1-codex'). If empty, the model is determined by review_depth."
     required: false
     default: ""
+  review_label:
+    description: "Optional human label for this review (e.g. a lane/matrix name). When set, the completion comment shows a 'Lane:' line with this value. Useful when several reviews run on one PR and the model alone doesn't disambiguate them."
+    required: false
+    default: ""
+  completion_show_model:
+    description: "Show the 'Model:' line in the completion comment. Defaults to 'true'. Set to 'false' to suppress it — e.g. when review_label already carries the model."
+    required: false
+    default: "true"
   reasoning_effort:
     description: "Override reasoning effort for review flows (passed to Droid Exec as --reasoning-effort). If empty, determined by review_depth (shallow=default, deep=high)."
     required: false
@@ -387,9 +395,11 @@ runs:
         TRACK_PROGRESS: ${{ inputs.track_progress }}
         AUTOMATIC_REVIEW: ${{ inputs.automatic_review }}
         AUTOMATIC_SECURITY_REVIEW: ${{ inputs.automatic_security_review }}
-        # Model attribution in the completion comment (which model produced this
-        # review).
+        # Attribution in the completion comment: the model that produced the
+        # review, an optional lane label, and whether to show the model line.
         REVIEW_MODEL: ${{ inputs.review_model }}
+        REVIEW_LABEL: ${{ inputs.review_label }}
+        COMPLETION_SHOW_MODEL: ${{ inputs.completion_show_model }}
 
     - name: Prepare redacted debug artifacts
       if: always() && steps.prepare.outputs.contains_trigger == 'true' && inputs.debug_artifacts == 'redacted'

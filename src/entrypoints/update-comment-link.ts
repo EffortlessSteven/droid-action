@@ -151,10 +151,14 @@ async function run() {
       }
     }
 
-    // Which model produced this review (for the completion comment's model
-    // attribution). The "what it flagged + why" already lives in the action's
-    // review summary and the inline comments.
+    // Completion-comment attribution: the model that produced the review, an
+    // optional lane label, and whether to show the model line. The "what it
+    // flagged + why" already lives in the review summary and inline comments.
     const reviewModel = process.env.REVIEW_MODEL?.trim() || undefined;
+    const reviewLabel = process.env.REVIEW_LABEL?.trim() || undefined;
+    const showModel =
+      (process.env.COMPLETION_SHOW_MODEL ?? "true").trim().toLowerCase() !==
+      "false";
 
     // Prepare input for updateCommentBody function
     const commentInput: CommentUpdateInput = {
@@ -170,6 +174,8 @@ async function run() {
       errorDetails,
       securityReviewRan: process.env.AUTOMATIC_SECURITY_REVIEW === "true",
       reviewModel,
+      reviewLabel,
+      showModel,
     };
 
     const updatedBody = updateCommentBody(commentInput);

@@ -18,11 +18,18 @@ export type CommentUpdateInput = {
   errorDetails?: string;
   securityReviewRan?: boolean;
   mentionTriggerUser?: boolean;
-  // Which model produced this review. Rendered into the completion comment so a
-  // multi-model / multi-lane setup can tell, per comment, who reviewed. The
-  // "what it flagged + why" already lives in the action's own review summary and
-  // the inline comments, so we only add the missing model attribution here.
+  // Completion-comment attribution, so a multi-model / multi-lane setup can tell
+  // per comment who reviewed. The "what it flagged + why" already lives in the
+  // review summary and inline comments; these only add identity.
+  //   reviewModel  -> "Model:" line (shown when showModel !== false)
+  //   reviewLabel  -> "Lane:" line (e.g. a matrix/lane name; shown when set)
+  //   showModel    -> suppress the model line (default: show) — e.g. when the
+  //                   label already carries the model
+  // Both lines are independent: with both set and showModel left default, both
+  // render (the common case when using a model override + a lane label).
   reviewModel?: string;
+  reviewLabel?: string;
+  showModel?: boolean;
 };
 
 // Render "custom:GLM-5.1-ZAI-Coding-0" -> "GLM-5.1-ZAI-Coding" (drop the
@@ -96,6 +103,8 @@ export function updateCommentBody(input: CommentUpdateInput): string {
     securityReviewRan,
     mentionTriggerUser = true,
     reviewModel,
+    reviewLabel,
+    showModel = true,
   } = input;
 
   // Extract content from the original comment body
@@ -222,8 +231,13 @@ export function updateCommentBody(input: CommentUpdateInput): string {
     newBody += `\n\n\`\`\`\n${errorDetails}\n\`\`\``;
   }
 
-  // Model attribution: which model produced this review.
-  if (reviewModel) {
+  // Attribution: optional lane label, then the model (unless suppressed).
+  // Both are independent — with a model override + a lane label and showModel
+  // left default, both lines render.
+  if (reviewLabel) {
+    newBody += `\n\n**Lane:** \`${reviewLabel}\``;
+  }
+  if (reviewModel && showModel) {
     newBody += `\n\n**Model:** \`${formatReviewModel(reviewModel)}\``;
   }
 
