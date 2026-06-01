@@ -316,6 +316,12 @@ runs:
       run: |
         bun run ${GITHUB_ACTION_PATH}/src/entrypoints/prepare-validator.ts
       env:
+        # prepare-validator.ts re-runs setupGitHubToken(), which honors
+        # OVERRIDE_GITHUB_TOKEN. Without it, the validator falls back to the
+        # Factory app-token exchange and fails on repos where the Factory GitHub
+        # App is not installed (e.g. forks). Forward the override here as the
+        # prepare/review/security steps already do.
+        OVERRIDE_GITHUB_TOKEN: ${{ inputs.github_token }}
         GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}
         REVIEW_VALIDATED_PATH: ${{ inputs.review_validated_path }}
         REVIEW_CANDIDATES_PATH: ${{ inputs.review_candidates_path }}
@@ -324,6 +330,13 @@ runs:
         REVIEW_MODEL: ${{ inputs.review_model }}
         REASONING_EFFORT: ${{ inputs.reasoning_effort }}
         INCLUDE_SUGGESTIONS: ${{ inputs.include_suggestions }}
+        # review-validator.ts already merges DROID_ARGS into the validator's
+        # droid invocation, but this step wasn't forwarding it (only the
+        # candidate "Prepare action" step did). Without this, user
+        # --append-system-prompt-file (e.g. the no-approval / audit-trail review
+        # posture) reaches candidate generation but NOT the validator that writes
+        # the final summary. Forward it so the posture shapes both passes.
+        DROID_ARGS: ${{ inputs.droid_args }}
 
     - name: Run Droid Exec (validator)
       id: droid_validator
@@ -374,6 +387,9 @@ runs:
         TRACK_PROGRESS: ${{ inputs.track_progress }}
         AUTOMATIC_REVIEW: ${{ inputs.automatic_review }}
         AUTOMATIC_SECURITY_REVIEW: ${{ inputs.automatic_security_review }}
+        # Model attribution in the completion comment (which model produced this
+        # review).
+        REVIEW_MODEL: ${{ inputs.review_model }}
 
     - name: Prepare redacted debug artifacts
       if: always() && steps.prepare.outputs.contains_trigger == 'true' && inputs.debug_artifacts == 'redacted'

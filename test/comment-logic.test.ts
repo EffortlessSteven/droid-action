@@ -619,3 +619,36 @@ describe("action metadata mention_trigger_user input", () => {
     });
   }
 });
+
+describe("review model attribution", () => {
+  const baseInput: CommentUpdateInput = {
+    currentBody: "Droid is working…",
+    actionFailed: false,
+    executionDetails: null,
+    jobUrl: "https://github.com/owner/repo/actions/runs/123",
+  };
+
+  it("renders the model, stripping `custom:` prefix and catalog index", () => {
+    const result = updateCommentBody({
+      ...baseInput,
+      reviewModel: "custom:GLM-5.1-ZAI-Coding-0",
+    });
+
+    expect(result).toContain("**Model:** `GLM-5.1-ZAI-Coding`");
+  });
+
+  it("renders a different model unchanged otherwise", () => {
+    const result = updateCommentBody({
+      ...baseInput,
+      reviewModel: "custom:MiniMax-M3-3",
+    });
+
+    expect(result).toContain("**Model:** `MiniMax-M3`");
+  });
+
+  it("omits the model line entirely when no model is provided", () => {
+    const result = updateCommentBody(baseInput);
+
+    expect(result).not.toContain("**Model:**");
+  });
+});

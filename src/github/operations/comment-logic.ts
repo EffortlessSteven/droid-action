@@ -18,7 +18,18 @@ export type CommentUpdateInput = {
   errorDetails?: string;
   securityReviewRan?: boolean;
   mentionTriggerUser?: boolean;
+  // Which model produced this review. Rendered into the completion comment so a
+  // multi-model / multi-lane setup can tell, per comment, who reviewed. The
+  // "what it flagged + why" already lives in the action's own review summary and
+  // the inline comments, so we only add the missing model attribution here.
+  reviewModel?: string;
 };
+
+// Render "custom:GLM-5.1-ZAI-Coding-0" -> "GLM-5.1-ZAI-Coding" (drop the
+// `custom:` prefix and the trailing BYOK catalog index).
+export function formatReviewModel(model: string): string {
+  return model.replace(/^custom:/, "").replace(/-\d+$/, "");
+}
 
 export const SECURITY_REVIEW_BADGE =
   "![Security Review](https://img.shields.io/badge/security%20review-ran-blue)";
@@ -84,6 +95,7 @@ export function updateCommentBody(input: CommentUpdateInput): string {
     errorDetails,
     securityReviewRan,
     mentionTriggerUser = true,
+    reviewModel,
   } = input;
 
   // Extract content from the original comment body
@@ -208,6 +220,11 @@ export function updateCommentBody(input: CommentUpdateInput): string {
   // Add error details if available
   if (actionFailed && errorDetails) {
     newBody += `\n\n\`\`\`\n${errorDetails}\n\`\`\``;
+  }
+
+  // Model attribution: which model produced this review.
+  if (reviewModel) {
+    newBody += `\n\n**Model:** \`${formatReviewModel(reviewModel)}\``;
   }
 
   newBody += `\n\n---\n`;

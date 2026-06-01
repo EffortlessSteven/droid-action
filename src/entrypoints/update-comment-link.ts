@@ -151,6 +151,11 @@ async function run() {
       }
     }
 
+    // Which model produced this review (for the completion comment's model
+    // attribution). The "what it flagged + why" already lives in the action's
+    // review summary and the inline comments.
+    const reviewModel = process.env.REVIEW_MODEL?.trim() || undefined;
+
     // Prepare input for updateCommentBody function
     const commentInput: CommentUpdateInput = {
       currentBody,
@@ -164,6 +169,7 @@ async function run() {
       mentionTriggerUser,
       errorDetails,
       securityReviewRan: process.env.AUTOMATIC_SECURITY_REVIEW === "true",
+      reviewModel,
     };
 
     const updatedBody = updateCommentBody(commentInput);

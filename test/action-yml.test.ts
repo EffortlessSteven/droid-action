@@ -53,3 +53,14 @@ describe("action.yml debug artifact invariants", () => {
     expect(actionYml).toContain("if-no-files-found: error");
   });
 });
+
+describe("action.yml droid_args propagation", () => {
+  // Both review passes must receive user droid_args so an appended system prompt
+  // (e.g. review posture) shapes candidate generation AND the validator summary.
+  it("forwards DROID_ARGS to both the prepare and validator steps", () => {
+    const matches = actionYml.match(
+      /DROID_ARGS:\s*\$\{\{\s*inputs\.droid_args\s*\}\}/g,
+    );
+    expect(matches?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+});
