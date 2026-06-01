@@ -316,6 +316,12 @@ runs:
       run: |
         bun run ${GITHUB_ACTION_PATH}/src/entrypoints/prepare-validator.ts
       env:
+        # prepare-validator.ts re-runs setupGitHubToken(), which honors
+        # OVERRIDE_GITHUB_TOKEN. Without it, the validator falls back to the
+        # Factory app-token exchange and fails on repos where the Factory GitHub
+        # App is not installed (e.g. forks). Forward the override here as the
+        # prepare/review/security steps already do.
+        OVERRIDE_GITHUB_TOKEN: ${{ inputs.github_token }}
         GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}
         REVIEW_VALIDATED_PATH: ${{ inputs.review_validated_path }}
         REVIEW_CANDIDATES_PATH: ${{ inputs.review_candidates_path }}
