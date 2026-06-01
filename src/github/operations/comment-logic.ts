@@ -6,6 +6,12 @@ export type ExecutionDetails = {
   duration_api_ms?: number;
 };
 
+export type ReviewDigestComment = {
+  path: string;
+  line?: number | null;
+  title: string;
+};
+
 export type CommentUpdateInput = {
   currentBody: string;
   actionFailed: boolean;
@@ -18,7 +24,53 @@ export type CommentUpdateInput = {
   errorDetails?: string;
   securityReviewRan?: boolean;
   mentionTriggerUser?: boolean;
+  // Mechanical review digest: which model ran, and what it flagged (path:line +
+  // first line of each finding). Rendered into the completion comment so a
+  // multi-model / multi-lane setup can see, per comment, who reviewed and what
+  // they said — no LLM, just the validated findings.
+  reviewModel?: string;
+  reviewComments?: ReviewDigestComment[];
+  reviewSummary?: string;
 };
+
+// Render "custom:GLM-5.1-ZAI-Coding-0" -> "GLM-5.1-ZAI-Coding" (drop the
+// `custom:` prefix and the trailing BYOK catalog index).
+export function formatReviewModel(model: string): string {
+  return model.replace(/^custom:/, "").replace(/-\d+$/, "");
+}
+
+// Build the mechanical model + findings block for the completion comment.
+export function buildReviewDigest(input: {
+  reviewModel?: string;
+  reviewComments?: ReviewDigestComment[];
+  reviewSummary?: string;
+  actionFailed?: boolean;
+}): string {
+  const { reviewModel, reviewComments, reviewSummary, actionFailed } = input;
+  if (!reviewModel && !reviewComments?.length && !reviewSummary) return "";
+
+  const parts: string[] = [];
+  if (reviewModel) parts.push(`**Model:** \`${formatReviewModel(reviewModel)}\``);
+
+  if (reviewComments && reviewComments.length > 0) {
+    parts.push(`**Flagged (${reviewComments.length}):**`);
+    const list = reviewComments
+      .map((c) => {
+        const loc = c.line != null ? `${c.path}:${c.line}` : c.path;
+        return `- \`${loc}\` — ${c.title}`;
+      })
+      .join("\n");
+    parts.push(list);
+  } else if (reviewModel && !actionFailed) {
+    parts.push("_No actionable findings._");
+  }
+
+  if (reviewSummary) {
+    parts.push(`> ${reviewSummary.replace(/\s*\n\s*/g, " ").trim()}`);
+  }
+
+  return parts.join("\n\n");
+}
 
 export const SECURITY_REVIEW_BADGE =
   "![Security Review](https://img.shields.io/badge/security%20review-ran-blue)";
@@ -84,6 +136,9 @@ export function updateCommentBody(input: CommentUpdateInput): string {
     errorDetails,
     securityReviewRan,
     mentionTriggerUser = true,
+    reviewModel,
+    reviewComments,
+    reviewSummary,
   } = input;
 
   // Extract content from the original comment body
@@ -208,6 +263,17 @@ export function updateCommentBody(input: CommentUpdateInput): string {
   // Add error details if available
   if (actionFailed && errorDetails) {
     newBody += `\n\n\`\`\`\n${errorDetails}\n\`\`\``;
+  }
+
+  // Mechanical per-model review digest (which model, what it flagged, why).
+  const reviewDigest = buildReviewDigest({
+    reviewModel,
+    reviewComments,
+    reviewSummary,
+    actionFailed,
+  });
+  if (reviewDigest) {
+    newBody += `\n\n${reviewDigest}`;
   }
 
   newBody += `\n\n---\n`;

@@ -151,6 +151,43 @@ async function run() {
       }
     }
 
+    // Mechanical review digest: which model ran and what it flagged. Read the
+    // validated findings the review pass already wrote; no LLM involved. Missing
+    // file (e.g. non-review/tag mode) just means no digest.
+    const reviewModel = process.env.REVIEW_MODEL?.trim() || undefined;
+    let reviewComments:
+      | { path: string; line?: number | null; title: string }[]
+      | undefined;
+    let reviewSummary: string | undefined;
+    try {
+      const runnerTemp = process.env.RUNNER_TEMP;
+      const validatedPath =
+        process.env.REVIEW_VALIDATED_PATH ||
+        (runnerTemp
+          ? `${runnerTemp}/droid-prompts/review_validated.json`
+          : "");
+      if (validatedPath) {
+        const validated = JSON.parse(await fs.readFile(validatedPath, "utf8"));
+        if (Array.isArray(validated?.comments)) {
+          reviewComments = validated.comments
+            .filter((c: any) => c && c.path)
+            .map((c: any) => ({
+              path: String(c.path),
+              line: c.line ?? null,
+              title:
+                (String(c.body ?? "").split("\n")[0] ?? "")
+                  .trim()
+                  .slice(0, 160) || "(no title)",
+            }));
+        }
+        if (validated?.summary?.body) {
+          reviewSummary = String(validated.summary.body);
+        }
+      }
+    } catch {
+      // No validated findings available; skip the digest.
+    }
+
     // Prepare input for updateCommentBody function
     const commentInput: CommentUpdateInput = {
       currentBody,
@@ -164,6 +201,9 @@ async function run() {
       mentionTriggerUser,
       errorDetails,
       securityReviewRan: process.env.AUTOMATIC_SECURITY_REVIEW === "true",
+      reviewModel,
+      reviewComments,
+      reviewSummary,
     };
 
     const updatedBody = updateCommentBody(commentInput);
